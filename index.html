@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE MINI APP TEST</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+    <h1>認証テスト</h1>
+    <div id="status">初期化中...</div>
+    <button id="authBtn" onclick="sendToken()">サーバーで認証する</button><br/>
+    <button id="logoutBtn" onclick="logout()">ログアウトする</button><br/>
+    
+    
+    <script>
+        function printError(err) {
+          console.error(`ecode:${err.code}, msg:${err.message}, cause:${err.cause}`);
+        }
+        
+        // 設定：あなたの情報を入れてください
+        const LIFF_ID = '2008748710-pETQZV1r'; // ★★LINE Developersで確認したLIFF ID
+        const CF_WORKER_URL = 'https://line-auth-api.l1nem1n1appy.workers.dev'; // ★★CloudflareのURL
+        
+        async function main() {
+            try {
+                // 1. LIFFの初期化
+                await liff.init({ liffId: LIFF_ID });
+
+                if (!liff.isLoggedIn()) {
+                    // 2. ログインしていなければログイン画面へ
+                    liff.login();
+                } else {
+                    document.getElementById('status').innerText = 'ログイン済み。サーバーに送信可能です。';
+                    document.getElementById('testBtn').style.display = 'block';
+                }
+            } catch (err) {
+                console.error('LIFF初期化失敗', err);
+                document.getElementById('status').innerText = 'エラーが発生しました。';
+            }
+        }
+        
+        function updateStatusMessage(message) {
+          document.getElementById('status').innerText = message;
+        }
+        
+        function logout() {
+          liff.logout();
+          updateStatusMessage("ログアウトしました。");
+        }
+
+        async function sendToken() {
+            if (!liff.isLoggedIn()) {
+                // 2. ログインしていなければログイン画面へ
+                //    トークンはlogin後のキャッシュなので、1時間たつと有効期限切れの物になるので
+                liff.login();
+                return;
+            }
+            
+            updateStatusMessage('認証中...');
+            
+            // 3. IDトークンの取得
+            const idToken = liff.getIDToken();
+
+            try {
+                // 4. Cloudflare Workersへ送信///
+                const response = await fetch(CF_WORKER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`,
+                        'Content-Type': 'application/json'
+                        
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    updateStatusMessage(`認証成功！ メールアドレス: ${result.email}`);
+                } else {
+                    updateStatusMessage(`認証失敗: ${result.message}`);
+                }
+            } catch (err) {
+                updateStatusMessage('通信エラーが発生しました。');
+                alert(err.message);
+                printError(err);
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
