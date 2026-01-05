@@ -35,7 +35,8 @@
                     document.getElementById('testBtn').style.display = 'block';
                 }
             } catch (err) {
-                console.error('LIFF初期化失敗', err);
+                assert(err);
+                printError(err);
                 document.getElementById('status').innerText = 'エラーが発生しました。';
             }
         }
